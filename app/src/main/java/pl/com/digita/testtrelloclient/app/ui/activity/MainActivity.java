@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.os.Build;
 import pl.com.digita.testtrelloclient.app.R;
+import pl.com.digita.testtrelloclient.app.ui.fragment.LoginFragment;
 
 
 public class MainActivity extends ActionBarActivity
@@ -24,7 +25,7 @@ public class MainActivity extends ActionBarActivity
         if (savedInstanceState == null)
         {
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, new PlaceholderFragment())
+                    .add(R.id.container, LoginFragment.newInstance())
                     .commit();
         }
     }
