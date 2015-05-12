@@ -2,31 +2,19 @@ package pl.com.digita.testtrelloclient.app.ui.activity;
 
 import android.content.Intent;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
-import android.widget.Toast;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import org.scribe.builder.ServiceBuilder;
-import org.scribe.builder.api.TrelloApi;
-import org.scribe.model.Token;
-import org.scribe.oauth.OAuthService;
-import pl.com.digita.testtrelloclient.app.Constants;
 import pl.com.digita.testtrelloclient.app.R;
-
-import java.util.concurrent.ExecutionException;
+import pl.com.digita.testtrelloclient.app.communication.ITrelloService;
 
 
 public class LoginActivity extends ActionBarActivity
 {
 
-    private final OAuthService s = new ServiceBuilder()
-            .provider(TrelloApi.class)
-            .apiKey(Constants.API_KEY)
-            .apiSecret(Constants.API_SECRET)
-            .build();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -40,28 +28,19 @@ public class LoginActivity extends ActionBarActivity
     public void onClickLoginButton()
     {
 
-        //TODO check it!!!
-        Toast.makeText(getApplicationContext(), "Login", Toast.LENGTH_LONG).show();
-        String authUrl = null;
-        try {
-            authUrl = new AuthUrl().execute().get();
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        }
-        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(authUrl)));
+        //Serious troubles with standard OAuth calls, using some workaround...
 
-        Log.d("trello", "url: "+ authUrl);
+
+        Uri uri = Uri.parse(ITrelloService.BASE_URL + "authorize?key="
+                + ITrelloService.API_KEY
+                + "&name=My+Application&expiration=1day&response_type=code&scope=read,write&&return_url=http%3A%2F%2Ftrello.digita.com.pl");
+        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        Log.i("trello", "called url" + uri.toString());
+        startActivity(intent);
+
+
     }
 
 
-    private class AuthUrl extends AsyncTask<String, Void, String>
-    {
 
-        @Override
-        protected String doInBackground(String... params) {
-            Token requestToken = s.getRequestToken();
-            return s.getAuthorizationUrl(requestToken);
-        }
-
-    }
 }
