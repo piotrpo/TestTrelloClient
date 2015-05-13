@@ -1,77 +1,61 @@
 package pl.com.digita.testtrelloclient.app.ui.activity;
 
-import android.support.v7.app.ActionBarActivity;
-import android.support.v7.app.ActionBar;
-import android.support.v4.app.Fragment;
+import android.net.Uri;
 import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.os.Build;
+import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
+import pl.com.digita.testtrelloclient.app.Constants;
 import pl.com.digita.testtrelloclient.app.R;
-import pl.com.digita.testtrelloclient.app.ui.fragment.LoginFragment;
+import pl.com.digita.testtrelloclient.app.communication.CommunicationManager;
+import pl.com.digita.testtrelloclient.app.dependencies.DaggerGraphManager;
+import pl.com.digita.testtrelloclient.app.ui.fragment.TrelloBoardFragment;
+
+import javax.inject.Inject;
 
 
 public class MainActivity extends ActionBarActivity
 {
+
+    @Inject
+    CommunicationManager mCommunicationManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        DaggerGraphManager.INSTANCE.getObjectGraph().inject(this);
+
         if (savedInstanceState == null)
         {
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, LoginFragment.newInstance())
+                    .add(R.id.container, TrelloBoardFragment.newInstance())
                     .commit();
         }
     }
 
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu)
+    protected void onResume()
     {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
+        super.onResume();
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings)
+        // the intent filter defined in AndroidManifest will handle the return from ACTION_VIEW intent
+        Uri uri = getIntent().getData();
+        if (uri != null && uri.toString().startsWith(Constants.REDIRECT_URL))
         {
-            return true;
-        }
+            String[] strings = uri.toString().split("=");
+            String token = strings[strings.length-1];
 
-        return super.onOptionsItemSelected(item);
-    }
-
-    /**
-     * A placeholder fragment containing a simple view.
-     */
-    public static class PlaceholderFragment extends Fragment
-    {
-
-        public PlaceholderFragment()
-        {
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState)
-        {
-            View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-            return rootView;
+            if (token != null)
+            {
+                mCommunicationManager.setAuthToken(token);
+            }
+            else
+            {
+                //something went wrong
+                Log.w(Constants.TAG, "Token not found in redirected URL: " + uri);
+            }
         }
     }
 }

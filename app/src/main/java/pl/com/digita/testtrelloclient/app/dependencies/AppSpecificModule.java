@@ -7,7 +7,7 @@ import dagger.Provides;
 import pl.com.digita.testtrelloclient.app.communication.CommunicationManager;
 import pl.com.digita.testtrelloclient.app.datastorage.DataManager;
 import pl.com.digita.testtrelloclient.app.ui.activity.MainActivity;
-import pl.com.digita.testtrelloclient.app.ui.fragment.LoginFragment;
+import pl.com.digita.testtrelloclient.app.ui.fragment.TrelloBoardFragment;
 
 import javax.inject.Singleton;
 
@@ -25,7 +25,8 @@ import javax.inject.Singleton;
         library = true,
         injects = {
                 MainActivity.class,
-                LoginFragment.class
+                TrelloBoardFragment.class,
+                CommunicationManager.class
 
         }
 )

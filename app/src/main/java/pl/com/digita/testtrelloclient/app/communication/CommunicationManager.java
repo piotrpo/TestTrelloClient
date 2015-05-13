@@ -1,11 +1,18 @@
 package pl.com.digita.testtrelloclient.app.communication;
 
-import android.util.Base64;
 import com.squareup.okhttp.OkHttpClient;
-import pl.com.digita.testtrelloclient.app.model.AccessToken;
-import retrofit.RequestInterceptor;
+import com.squareup.otto.Bus;
+import pl.com.digita.testtrelloclient.app.dependencies.DaggerGraphManager;
+import pl.com.digita.testtrelloclient.app.model.Board;
+import pl.com.digita.testtrelloclient.app.model.TrelloList;
+import retrofit.Callback;
 import retrofit.RestAdapter;
+import retrofit.RetrofitError;
 import retrofit.client.OkClient;
+import retrofit.client.Response;
+
+import javax.inject.Inject;
+import java.util.ArrayList;
 
 /**
  * Created by Piotr on 2015-05-12.
@@ -15,58 +22,77 @@ import retrofit.client.OkClient;
  */
 public class CommunicationManager
 {
-    //OAuth constants
-    private static final String API_KEY = "609dcfdf0749515b1943f945fbf6f7a4";
-    private static final String API_SECRET = "c21b13a13b5475bdb4c09fc6b63cac698d6f829346f43345c91298b237cd977a";
-    private static final String PROTECTED_RESOURCE_URL = "https://trello.com/1/members/me";
+    private String mAuthToken;
+    private ITrelloService mTrelloService;
+    private String mMyBoardId;
 
+    @Inject
+    Bus mOttoBus;
 
-    private static RestAdapter.Builder builder = new RestAdapter.Builder().setClient(new OkClient(new OkHttpClient()));
+    {
+        DaggerGraphManager.INSTANCE.getObjectGraph().inject(this);
+        RestAdapter restAdapter = new RestAdapter.Builder().setClient(new OkClient(new OkHttpClient()))
+                .setEndpoint(ITrelloService.BASE_URL)
+               // .setLogLevel(RestAdapter.LogLevel.FULL)
+                .build();
+        mTrelloService = restAdapter.create(ITrelloService.class);
 
+    }
 
-    public static <S> S createService(Class<S> serviceClass, String baseUrl, String username, String password) {
-        // set endpoint url
-        builder.setEndpoint(baseUrl);
+    public void setAuthToken(String pAuthToken)
+    {
+        mAuthToken = pAuthToken;
 
-        if (username != null && password != null) {
-            // concatenate username and password with colon for authentication
-            final String credentials = username + ":" + password;
-
-            builder.setRequestInterceptor(new RequestInterceptor() {
-                @Override
-                public void intercept(RequestFacade request) {
-                    // create Base64 encodet string
-                    String string = "Basic " + Base64.encodeToString(credentials.getBytes(), Base64.NO_WRAP);
-                    request.addHeader("Accept", "application/json");
-                    request.addHeader("Authorization", string);
-                }
-            });
-        }
-
-        RestAdapter adapter = builder.build();
-
-        return adapter.create(serviceClass);
+        requestBoards();
     }
 
 
-    public static <S> S createService(Class<S> serviceClass, String baseUrl, final AccessToken accessToken) {
-        // set endpoint url
-        builder.setEndpoint(baseUrl);
+    public void requestBoards()
+    {
+        mTrelloService.requestMyBoards(mAuthToken, ITrelloService.API_KEY, "name", new Callback<ArrayList<Board>>()
+        {
+            @Override
+            public void success(ArrayList<Board> pBoards, Response response)
+            {
+                //we just need it to check what is My_Board id, as it's the only one we're interested in
 
-        if (accessToken != null) {
-            builder.setRequestInterceptor(new RequestInterceptor() {
-                @Override
-                public void intercept(RequestFacade request) {
-                    request.addHeader("Accept", "application/json");
-                    request.addHeader("Authorization", accessToken.getTokenType() + " " + accessToken.getAccessToken());
+                for (Board board : pBoards)
+                {
+                    if (board.mName.equalsIgnoreCase("my_board"))
+                    {
+                        mMyBoardId = board.mId;
+                        break;
+                    }
                 }
-            });
-        }
 
-        RestAdapter adapter = builder.build();
+                //right after getting id ask for cards
+                requestBoardContent(mMyBoardId);
+            }
 
-        return adapter.create(serviceClass);
+            @Override
+            public void failure(RetrofitError error)
+            {
+                mOttoBus.post(error);
+            }
+        });
     }
 
+    public void requestBoardContent(String pBoardId)
+    {
+        mTrelloService.requestBoardContent(mAuthToken, ITrelloService.API_KEY, "name", "all", "name, content", pBoardId, new Callback<ArrayList<TrelloList>>()
+        {
+            @Override
+            public void success(ArrayList<TrelloList> pTrelloLists, Response response)
+            {
+                mOttoBus.post(pTrelloLists);
+            }
+
+            @Override
+            public void failure(RetrofitError error)
+            {
+                mOttoBus.post(error);
+            }
+        });
+    }
 
 }
